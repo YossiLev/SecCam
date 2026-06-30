@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>StreamHub Mobile</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --border: #1e1e2e;
+    --accent: #7c6af7;
+    --accent-dim: #3d3580;
+    --red: #f74a4a;
+    --green: #4af7a0;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --radius: 14px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Setup Screen ── */
+  #setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 28px;
+  }
+
+  .logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--accent);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+  }
+
+  .logo h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .logo p {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .form-group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+  }
+
+  input::placeholder { color: var(--muted); }
+
+  .fields { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 17px;
+    font-weight: 600;
+    padding: 16px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-primary:active { opacity: 0.8; transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Stream Screen ── */
+  #stream-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    position: relative;
+  }
+
+  #video-preview {
+    width: 100%;
+    flex: 1;
+    object-fit: cover;
+    background: #000;
+    transform: scaleX(-1); /* mirror for selfie */
+  }
+
+  .stream-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+  }
+
+  .slot-badge {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .rec-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .rec-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .stream-controls {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .btn-stop {
+    flex: 1;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-flip {
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Voice Alert ── */
+  #voice-alert {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  #voice-alert.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .voice-ring {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    position: relative;
+  }
+
+  .voice-ring::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    animation: ripple 1.4s ease-out infinite;
+  }
+
+  @keyframes ripple {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(1.5); }
+  }
+
+  .voice-label {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .voice-sub {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* ── Status Bar ── */
+  #status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    display: none;
+  }
+
+  #connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .status-dot.connected { background: var(--green); }
+  .status-dot.error { background: var(--red); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Setup Screen -->
+  <div id="setup-screen">
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <h1>StreamHub</h1>
+      <p>Connect your camera to a local server<br>and stream securely over WiFi</p>
+    </div>
+
+    <div class="fields">
+      <div class="form-group">
+        <label>Server IP Address</label>
+        <input id="ip-input" type="text" inputmode="url"
+               placeholder="192.168.1.100:8080" autocomplete="off" autocorrect="off">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="pw-input" type="password" placeholder="Enter server password">
+      </div>
+      <div class="form-group">
+        <label>Device Name (optional)</label>
+        <input id="name-input" type="text" placeholder="e.g. Front Door" maxlength="30">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="start-btn" onclick="startStream()">Start Streaming</button>
+  </div>
+
+  <!-- Stream Screen -->
+  <div id="stream-screen">
+    <video id="video-preview" autoplay muted playsinline></video>
+
+    <div class="stream-overlay">
+      <div class="slot-badge" id="slot-label">Slot —</div>
+      <div class="rec-indicator">
+        <div class="rec-dot"></div>
+        <span>REC</span>
+      </div>
+    </div>
+
+    <div class="stream-controls">
+      <button class="btn-flip" onclick="flipCamera()" title="Flip camera">🔄</button>
+      <button class="btn-stop" onclick="stopStream()">■ Stop Streaming</button>
+    </div>
+  </div>
+
+  <!-- Voice Alert Overlay -->
+  <div id="voice-alert">
+    <div class="voice-ring">🔊</div>
+    <div class="voice-label">Incoming Voice Message</div>
+    <div class="voice-sub">Playing now…</div>
+  </div>
+
+</div>
+
+<script>
+// ── Globals ──────────────────────────────────────────────────────────────────
+let ws = null;
+let mediaStream = null;
+let mediaRecorder = null;
+let facingMode = 'environment'; // start with rear camera
+let pingInterval = null;
+let audioCtx = null;
+let voiceMode = false; // true while receiving voice binary
+const CHUNK_MS = 1000; // send video data every 1 second
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function show(id) { $(id).style.display = 'flex'; }
+function hide(id) { $(id).style.display = 'none'; }
+
+function showSetup() {
+  $('setup-screen').style.display = 'flex';
+  $('stream-screen').style.display = 'none';
+}
+
+function showStream() {
+  $('setup-screen').style.display = 'none';
+  $('stream-screen').style.display = 'flex';
+}
+
+// Persist settings
+window.addEventListener('load', () => {
+  $('ip-input').value = localStorage.getItem('sh_ip') || '';
+  $('name-input').value = localStorage.getItem('sh_name') || '';
+});
+
+// ── Start Streaming ───────────────────────────────────────────────────────────
+async function startStream() {
+  const ip = $('ip-input').value.trim();
+  const pw = $('pw-input').value.trim();
+  const name = $('name-input').value.trim() || 'Phone';
+
+  if (!ip) { alert('Please enter the server IP address.'); return; }
+  if (!pw) { alert('Please enter the server password.'); return; }
+
+  localStorage.setItem('sh_ip', ip);
+  localStorage.setItem('sh_name', name);
+
+  $('start-btn').disabled = true;
+  $('start-btn').textContent = 'Connecting…';
+
+  try {
+    // Get camera
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 24 }
+      },
+      audio: false
+    });
+
+    $('video-preview').srcObject = mediaStream;
+
+    // Connect WebSocket
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${proto}://${ip}/stream?password=${encodeURIComponent(pw)}&name=${encodeURIComponent(name)}`;
+    ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = () => {
+      console.log('[WS] Connected');
+      startRecorder();
+      showStream();
+      pingInterval = setInterval(() => {
+        if (ws?.readyState === WebSocket.OPEN)
+          ws.send(JSON.stringify({ type: 'ping' }));
+      }, 20000);
+    };
+
+    ws.onmessage = (ev) => {
+      if (ev.data instanceof ArrayBuffer) {
+        handleVoiceAudio(ev.data);
+        return;
+      }
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'assigned') {
+          $('slot-label').textContent = `Slot ${msg.slot + 1}`;
+        }
+        if (msg.type === 'voice_incoming') {
+          voiceMode = true;
+        }
+      } catch(e) {}
+    };
+
+    ws.onerror = (e) => {
+      console.error('[WS] Error', e);
+      stopStream('Connection error. Check IP and password.');
+    };
+
+    ws.onclose = (ev) => {
+      if (ev.code === 1013) {
+        stopStream('Server is full (max 6 phones). Try again later.');
+      } else if (ev.code !== 1000) {
+        stopStream('Connection closed.');
+      }
+    };
+
+  } catch (err) {
+    $('start-btn').disabled = false;
+    $('start-btn').textContent = 'Start Streaming';
+    if (err.name === 'NotAllowedError') {
+      alert('Camera permission denied. Please allow camera access in your browser settings.');
+    } else {
+      alert('Error: ' + err.message);
+    }
+  }
+}
+
+// ── MediaRecorder → WebSocket ─────────────────────────────────────────────────
+function startRecorder() {
+  // Determine supported codec
+  const codecs = [
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4'
+  ];
+  const mime = codecs.find(c => MediaRecorder.isTypeSupported(c)) || '';
+
+  mediaRecorder = new MediaRecorder(mediaStream, {
+    mimeType: mime || undefined,
+    videoBitsPerSecond: 1_500_000
+  });
+
+  // Send mime type to server before any binary data so viewers open
+  // the SourceBuffer with the exact codec the phone actually chose.
+  const actualMime = mediaRecorder.mimeType || mime || 'video/webm';
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'mime', mime: actualMime }));
+  }
+
+  let firstChunk = true;
+  mediaRecorder.ondataavailable = (ev) => {
+    if (ev.data && ev.data.size > 0 && ws?.readyState === WebSocket.OPEN) {
+      if (firstChunk) {
+        console.log('[Rec] First chunk size:', ev.data.size, 'mime:', actualMime);
+        firstChunk = false;
+      }
+      ws.send(ev.data);
+    }
+  };
+
+  mediaRecorder.start(CHUNK_MS);
+  console.log('[Rec] Started, actual mime:', actualMime);
+}
+
+// ── Voice Audio Playback ──────────────────────────────────────────────────────
+async function handleVoiceAudio(arrayBuffer) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Show alert
+    const alert = $('voice-alert');
+    alert.classList.add('active');
+
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    const source = audioCtx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(audioCtx.destination);
+    source.start();
+    source.onended = () => {
+      alert.classList.remove('active');
+    };
+
+    // Safety: hide after 10s max
+    setTimeout(() => alert.classList.remove('active'), 10000);
+  } catch (e) {
+    console.error('[Voice] Playback error:', e);
+    $('voice-alert').classList.remove('active');
+  }
+}
+
+// ── Stop Streaming ────────────────────────────────────────────────────────────
+function stopStream(msg) {
+  if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  mediaRecorder = null;
+
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+
+  if (ws) {
+    ws.close(1000, 'User stopped');
+    ws = null;
+  }
+
+  $('start-btn').disabled = false;
+  $('start-btn').textContent = 'Start Streaming';
+  showSetup();
+
+  if (msg) setTimeout(() => alert(msg), 100);
+}
+
+// ── Flip Camera ───────────────────────────────────────────────────────────────
+async function flipCamera() {
+  facingMode = facingMode === 'environment' ? 'user' : 'environment';
+
+  if (mediaRecorder) {
+    mediaRecorder.stop();
+    mediaRecorder = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+  }
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24 } },
+      audio: false
+    });
+    $('video-preview').srcObject = mediaStream;
+    // Mirror selfie camera
+    $('video-preview').style.transform = facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+    startRecorder();
+  } catch(e) {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment'; // revert
+    alert('Could not switch camera: ' + e.message);
+  }
+}
+
+// ── Keep screen awake ─────────────────────────────────────────────────────────
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      await navigator.wakeLock.request('screen');
+    } catch(e) { /* not fatal */ }
+  }
+}
+
+requestWakeLock();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+</script>
+</body>
+</html>

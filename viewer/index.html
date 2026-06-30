@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>StreamHub Viewer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1a1a24;
+    --border: #1e1e2e;
+    --accent: #7c6af7;
+    --accent-glow: rgba(124,106,247,0.25);
+    --red: #f74a4a;
+    --green: #4af7a0;
+    --amber: #f7c44a;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --radius: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  html { height: 100%; }
+  body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Login Screen ── */
+  #login-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .login-icon {
+    width: 60px; height: 60px;
+    background: var(--accent);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .login-header h1 { font-size: 22px; font-weight: 700; }
+  .login-header p { font-size: 14px; color: var(--muted); }
+
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+
+  label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: var(--font);
+  }
+
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+
+  .btn {
+    padding: 13px 20px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:active { transform: scale(0.97); opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 4px 20px var(--accent-glow); }
+
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-voice {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    width: 56px; height: 56px;
+    font-size: 22px;
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .btn-voice.recording {
+    background: var(--red);
+    animation: pulse-btn 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-btn {
+    from { box-shadow: 0 0 0 0 rgba(247,74,74,0.5); }
+    to { box-shadow: 0 0 0 12px rgba(247,74,74,0); }
+  }
+
+  /* ── Main App ── */
+  #main-app { display: none; flex-direction: column; flex: 1; }
+
+  /* Header */
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .app-logo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .spacer { flex: 1; }
+
+  .conn-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .conn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .conn-dot.ok { background: var(--green); }
+  .conn-dot.err { background: var(--red); }
+
+  /* Layout */
+  .app-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    overflow: hidden;
+  }
+
+  @media (max-width: 700px) {
+    .app-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .sidebar.open { display: flex; position: fixed; inset: 0; z-index: 50; }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-title {
+    padding: 16px 18px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .slot-list { display: flex; flex-direction: column; gap: 2px; padding: 0 8px 12px; }
+
+  .slot-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1.5px solid transparent;
+  }
+
+  .slot-item:hover { background: var(--surface2); }
+  .slot-item.active { background: var(--accent-glow); border-color: var(--accent); }
+  .slot-item.offline { opacity: 0.45; cursor: default; }
+
+  .slot-num {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .slot-item.active .slot-num { background: var(--accent); color: #fff; }
+  .slot-item.online .slot-num { color: var(--text); }
+
+  .slot-info { flex: 1; min-width: 0; }
+  .slot-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .slot-item.online .slot-status { color: var(--green); }
+
+  .sidebar-section {
+    border-top: 1px solid var(--border);
+    padding: 14px 18px;
+  }
+
+  .sidebar-section h3 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Main panel */
+  .main-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Video area */
+  .video-area {
+    position: relative;
+    background: #000;
+    flex-shrink: 0;
+    aspect-ratio: 16/9;
+  }
+
+  #live-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+  }
+
+  .video-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .video-placeholder .ph-icon { font-size: 48px; opacity: 0.3; }
+  .video-placeholder p { font-size: 14px; }
+
+  .video-overlay {
+    position: absolute;
+    top: 12px; left: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .pill {
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* Controls panel */
+  .controls-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Voice message */
+  .voice-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+  }
+
+  .voice-section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .voice-section p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .voice-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .voice-status {
+    flex: 1;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .voice-status.active { color: var(--red); font-weight: 600; }
+
+  /* Recordings */
+  .recordings-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+  }
+
+  .recordings-section h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+
+  .rec-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .rec-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+
+  .rec-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec-item-size { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+
+  .rec-dl-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .rec-dl-btn:hover { background: var(--accent-glow); }
+
+  .empty-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 200;
+  }
+
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon">📡</div>
+      <h1>StreamHub Viewer</h1>
+      <p>Connect to a StreamHub server to view live camera feeds</p>
+    </div>
+    <div class="form-group">
+      <label>Server Address</label>
+      <input id="l-host" type="text" placeholder="192.168.1.100:8080 or myserver.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="l-pw" type="password" placeholder="Server password">
+    </div>
+    <div class="form-group">
+      <label>Camera Slot to Watch</label>
+      <select id="l-slot">
+        <option value="0">Slot 1</option>
+        <option value="1">Slot 2</option>
+        <option value="2">Slot 3</option>
+        <option value="3">Slot 4</option>
+        <option value="4">Slot 5</option>
+        <option value="5">Slot 6</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="connect()">Connect</button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="main-app">
+
+  <header class="app-header">
+    <div class="app-logo">📡 StreamHub</div>
+    <div class="spacer"></div>
+    <div class="conn-badge">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-label">Connecting…</span>
+    </div>
+    <button class="btn btn-secondary" style="padding:6px 12px;font-size:13px;" onclick="disconnect()">Disconnect</button>
+  </header>
+
+  <div class="app-layout">
+
+    <!-- Sidebar: slot list -->
+    <aside class="sidebar">
+      <div class="sidebar-title">Camera Feeds</div>
+      <div class="slot-list" id="slot-list"></div>
+
+      <div class="sidebar-section">
+        <h3>Recordings</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+          Select a slot to view its saved recordings.
+        </p>
+        <button class="btn btn-secondary" style="width:100%;font-size:13px;" onclick="loadRecordings()">
+          📂 Load Recordings
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main panel -->
+    <div class="main-panel">
+
+      <!-- Video -->
+      <div class="video-area" id="video-area">
+        <video id="live-video" autoplay playsinline></video>
+        <div class="video-placeholder" id="video-placeholder">
+          <div class="ph-icon">📷</div>
+          <p id="placeholder-text">Select a live camera slot</p>
+        </div>
+        <div class="video-overlay" id="live-badge" style="display:none;">
+          <div class="pill"><div class="live-dot"></div>LIVE</div>
+          <div class="pill" id="live-name">—</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls-panel">
+
+        <!-- Voice message -->
+        <div class="voice-section">
+          <h3>🎙️ Send Voice Message</h3>
+          <p>Hold the button to record. Release to send to the phone.</p>
+          <div class="voice-row">
+            <div class="voice-status" id="voice-status">Ready to record</div>
+            <button class="btn btn-voice" id="voice-btn"
+                    onmousedown="startVoice()" onmouseup="stopVoice()"
+                    ontouchstart="startVoice(event)" ontouchend="stopVoice(event)">🎙️</button>
+          </div>
+        </div>
+
+        <!-- Recordings list -->
+        <div class="recordings-section" id="rec-section" style="display:none;">
+          <h3>📼 Saved Recordings — Slot <span id="rec-slot-label">—</span></h3>
+          <div class="rec-list" id="rec-list">
+            <div class="empty-msg">Click "Load Recordings" to see saved files.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let ws = null;
+let serverHost = '';
+let serverPw = '';
+let currentSlot = 0;
+let slots = Array(6).fill(null).map((_, i) => ({ slot: i, connected: false }));
+
+// Voice recording
+let voiceRecorder = null;
+let voiceChunks = [];
+let isRecording = false;
+
+// MediaSource for live stream
+let mediaSource = null;
+let sourceBuffer = null;
+let bufferQueue = [];
+let mimeType = '';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function toast(msg, duration = 3000) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ── Connect ───────────────────────────────────────────────────────────────────
+function connect() {
+  serverHost = $('l-host').value.trim();
+  serverPw = $('l-pw').value.trim();
+  currentSlot = parseInt($('l-slot').value);
+
+  if (!serverHost || !serverPw) {
+    alert('Please fill in server address and password.'); return;
+  }
+
+  localStorage.setItem('sh_host', serverHost);
+  localStorage.setItem('sh_slot', currentSlot);
+
+  $('login-screen').style.display = 'none';
+  $('main-app').style.display = 'flex';
+
+  openWS();
+}
+
+window.addEventListener('load', () => {
+  $('l-host').value = localStorage.getItem('sh_host') || '';
+  const s = localStorage.getItem('sh_slot');
+  if (s !== null) $('l-slot').value = s;
+});
+
+function disconnect() {
+  if (ws) { ws.close(1000); ws = null; }
+  teardownVideo();
+  $('login-screen').style.display = 'flex';
+  $('main-app').style.display = 'none';
+  $('conn-dot').className = 'conn-dot';
+  $('conn-label').textContent = 'Disconnected';
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function openWS() {
+  const proto = serverHost.startsWith('localhost') || /^\d+\.\d+\.\d+\.\d+/.test(serverHost.split(':')[0])
+    ? 'ws' : 'wss';
+  const url = `${proto}://${serverHost}/view?password=${encodeURIComponent(serverPw)}&slot=${currentSlot}`;
+
+  ws = new WebSocket(url);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setConn('ok', 'Connected');
+  };
+
+  ws.onmessage = (ev) => {
+    if (ev.data instanceof ArrayBuffer) {
+      handleVideoChunk(new Uint8Array(ev.data));
+      return;
+    }
+    try {
+      const msg = JSON.parse(ev.data);
+      handleMsg(msg);
+    } catch(e) {}
+  };
+
+  ws.onerror = () => setConn('err', 'Connection error');
+  ws.onclose = (ev) => {
+    setConn('err', 'Disconnected');
+    if (ev.code !== 1000) {
+      setTimeout(() => {
+        if (ws?.readyState !== WebSocket.OPEN) {
+          toast('Reconnecting…');
+          openWS();
+        }
+      }, 3000);
+    }
+  };
+}
+
+function setConn(state, label) {
+  $('conn-dot').className = 'conn-dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : '');
+  $('conn-label').textContent = label;
+}
+
+function handleMsg(msg) {
+  if (msg.type === 'slots') {
+    slots = msg.slots;
+    renderSlots();
+  }
+  // mime arrives BEFORE stream_active and before binary chunks —
+  // store it so setupMediaSource() uses the phone's actual codec
+  if (msg.type === 'mime') {
+    mimeType = msg.mime;
+    console.log('[MSE] Received mime from server:', mimeType);
+    // If MediaSource is already open (shouldn't happen but be safe), recreate it
+    if (mediaSource && mediaSource.readyState === 'open') setupMediaSource();
+  }
+  if (msg.type === 'stream_active') {
+    $('live-badge').style.display = 'flex';
+    $('live-name').textContent = msg.name;
+    $('video-placeholder').style.display = 'none';
+    setupMediaSource(); // mimeType is already set by the preceding 'mime' message
+  }
+  if (msg.type === 'stream_inactive') {
+    $('live-badge').style.display = 'none';
+    $('placeholder-text').textContent = 'No active stream on slot ' + (msg.slot + 1);
+    $('video-placeholder').style.display = 'flex';
+    teardownVideo();
+  }
+  if (msg.type === 'stream_ended') {
+    toast('Stream ended.');
+    $('live-badge').style.display = 'none';
+    $('video-placeholder').style.display = 'flex';
+    $('placeholder-text').textContent = 'Stream ended';
+    teardownVideo();
+  }
+}
+
+// ── Slot Sidebar ──────────────────────────────────────────────────────────────
+function renderSlots() {
+  const list = $('slot-list');
+  list.innerHTML = '';
+  slots.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'slot-item' + (s.connected ? ' online' : ' offline') + (s.slot === currentSlot ? ' active' : '');
+    div.onclick = () => s.connected && switchSlot(s.slot);
+    div.innerHTML = `
+      <div class="slot-num">${s.slot + 1}</div>
+      <div class="slot-info">
+        <div class="slot-name">${s.name || `Slot ${s.slot + 1}`}</div>
+        <div class="slot-status">${s.connected ? '● Live' : 'Offline'}</div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function switchSlot(slot) {
+  if (slot === currentSlot) return;
+  currentSlot = slot;
+  teardownVideo();
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'change_slot', slot }));
+  }
+  renderSlots();
+}
+
+// ── Video Streaming (MediaSource API) ────────────────────────────────────────
+function setupMediaSource() {
+  teardownVideo();
+
+  // mimeType is set by the 'mime' message from the server (which got it from the phone).
+  // Fall back to vp8 only if we never received one.
+  if (!mimeType) {
+    const codecs = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
+    mimeType = codecs.find(c => MediaSource.isTypeSupported(c)) || 'video/webm';
+  }
+  console.log('[MSE] Opening SourceBuffer with mime:', mimeType);
+
+  // bufferQueue is already declared at module scope.
+  // Chunks arriving before sourceopen fires are queued there and
+  // flushed the moment the SourceBuffer becomes available.
+  mediaSource = new MediaSource();
+  const video = $('live-video');
+
+  // Assign src AFTER setting up the event listener so we don't miss sourceopen.
+  mediaSource.addEventListener('sourceopen', () => {
+    console.log('[MSE] sourceopen — readyState:', mediaSource.readyState);
+    if (mediaSource.readyState !== 'open') return;
+    try {
+      sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+      sourceBuffer.mode = 'sequence';
+      console.log('[MSE] SourceBuffer created, queue length:', bufferQueue.length);
+      sourceBuffer.addEventListener('updateend', () => {
+        console.log('[MSE] updateend — queue:', bufferQueue.length, 'buffered:', sourceBuffer.buffered.length ? sourceBuffer.buffered.end(0).toFixed(2)+'s' : 'none', 'videoReady:', video.readyState);
+        flushQueue();
+        if (video.paused && video.readyState >= 2) {
+          video.play().catch(e => console.warn('[Video] play():', e.message));
+        }
+      });
+      sourceBuffer.addEventListener('error', e => console.error('[MSE] SourceBuffer error:', e));
+      flushQueue();
+    } catch(e) {
+      console.error('[MSE] addSourceBuffer error:', e);
+    }
+  });
+
+  mediaSource.addEventListener('sourceclose', () => { sourceBuffer = null; });
+  mediaSource.addEventListener('error', e => console.error('[MSE] error:', e));
+
+  // Set src last — this triggers the browser to open the MediaSource
+  video.src = URL.createObjectURL(mediaSource);
+  video.style.display = 'block';
+
+  // Watchdog: if video stalls >3s, jump to live edge
+  video.addEventListener('waiting', () => {
+    setTimeout(() => {
+      if (!video.paused && video.readyState < 3) return; // already recovered
+      try {
+        if (sourceBuffer && sourceBuffer.buffered.length) {
+          const end = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1);
+          video.currentTime = Math.max(end - 0.3, 0);
+          video.play().catch(() => {});
+        }
+      } catch(e) {}
+    }, 3000);
+  });
+}
+
+function handleVideoChunk(chunk) {
+  bufferQueue.push(chunk);
+  if (bufferQueue.length === 1) console.log('[MSE] First chunk queued, size:', chunk.byteLength);
+  flushQueue();
+}
+
+function flushQueue() {
+  if (!sourceBuffer) { return; }
+  if (sourceBuffer.updating) { return; }
+  if (bufferQueue.length === 0) { return; }
+  if (mediaSource.readyState !== 'open') {
+    console.warn('[MSE] flushQueue: readyState is', mediaSource.readyState);
+    return;
+  }
+  const chunk = bufferQueue.shift();
+  try {
+    sourceBuffer.appendBuffer(chunk);
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      try {
+        if (sourceBuffer.buffered.length) {
+          const start = sourceBuffer.buffered.start(0);
+          const end = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1);
+          sourceBuffer.remove(start, Math.min(start + 10, end - 1));
+          bufferQueue.unshift(chunk);
+        }
+      } catch(e2) {}
+    } else {
+      console.warn('[MSE] appendBuffer error:', e.name, e.message);
+    }
+  }
+}
+
+function teardownVideo() {
+  const video = $('live-video');
+  bufferQueue = [];
+  sourceBuffer = null;
+  if (mediaSource) {
+    try { if (mediaSource.readyState === 'open') mediaSource.endOfStream(); } catch(e) {}
+    mediaSource = null;
+  }
+  if (video.src) {
+    URL.revokeObjectURL(video.src);
+    video.removeAttribute('src');
+    video.load();
+    video.style.display = 'none';
+  }
+}
+
+// ── Voice Message ─────────────────────────────────────────────────────────────
+async function startVoice(ev) {
+  if (ev) ev.preventDefault();
+  if (isRecording) return;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/webm';
+
+    voiceRecorder = new MediaRecorder(stream, { mimeType: mime });
+    voiceChunks = [];
+
+    voiceRecorder.ondataavailable = e => { if (e.data.size > 0) voiceChunks.push(e.data); };
+    voiceRecorder.onstop = sendVoiceMessage;
+    voiceRecorder.start();
+    isRecording = true;
+
+    $('voice-btn').classList.add('recording');
+    $('voice-btn').textContent = '🔴';
+    $('voice-status').textContent = 'Recording… release to send';
+    $('voice-status').className = 'voice-status active';
+  } catch(e) {
+    alert('Microphone access denied: ' + e.message);
+  }
+}
+
+function stopVoice(ev) {
+  if (ev) ev.preventDefault();
+  if (!isRecording || !voiceRecorder) return;
+
+  voiceRecorder.stop();
+  voiceRecorder.stream.getTracks().forEach(t => t.stop());
+  isRecording = false;
+
+  $('voice-btn').classList.remove('recording');
+  $('voice-btn').textContent = '🎙️';
+  $('voice-status').textContent = 'Sending…';
+  $('voice-status').className = 'voice-status';
+}
+
+async function sendVoiceMessage() {
+  if (voiceChunks.length === 0) {
+    $('voice-status').textContent = 'Nothing recorded';
+    return;
+  }
+
+  const blob = new Blob(voiceChunks, { type: voiceChunks[0].type });
+  const buf = await blob.arrayBuffer();
+
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'voice_message', targetSlot: currentSlot }));
+    ws.send(buf);
+    toast('Voice message sent! 🎙️');
+    $('voice-status').textContent = 'Message sent ✓';
+  } else {
+    $('voice-status').textContent = 'Not connected';
+    toast('Not connected to server.');
+  }
+  setTimeout(() => { $('voice-status').textContent = 'Ready to record'; }, 2000);
+}
+
+// ── Recordings ────────────────────────────────────────────────────────────────
+async function loadRecordings() {
+  const slot = currentSlot;
+  $('rec-slot-label').textContent = slot + 1;
+  $('rec-section').style.display = 'block';
+  $('rec-list').innerHTML = '<div class="empty-msg">Loading…</div>';
+
+  try {
+    const url = `http${serverHost.startsWith('localhost') || /^\d/.test(serverHost) ? '' : 's'}://${serverHost}/api/recordings/${slot}?password=${encodeURIComponent(serverPw)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const files = await resp.json();
+
+    if (!files.length) {
+      $('rec-list').innerHTML = '<div class="empty-msg">No recordings yet for this slot.</div>';
+      return;
+    }
+
+    $('rec-list').innerHTML = '';
+    files.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'rec-item';
+      // Parse timestamp from filename like chunk_2024-01-15T10-30-00-000Z.webm
+      let label = f.filename.replace('chunk_', '').replace('.webm', '').replace(/T/, ' ').replace(/-(?=\d{2}-\d{2}-)/, ':').replace(/-(?=\d{2}-\d{3}Z)/, ':').replace(/-\d{3}Z/, '');
+      div.innerHTML = `
+        <div class="rec-item-name" title="${f.filename}">${f.filename}</div>
+        <div class="rec-item-size">${formatBytes(f.size)}</div>
+        <button class="rec-dl-btn" onclick="downloadRecording(${slot}, '${f.filename}')">⬇ Download</button>`;
+      $('rec-list').appendChild(div);
+    });
+  } catch(e) {
+    $('rec-list').innerHTML = `<div class="empty-msg">Error loading recordings: ${e.message}</div>`;
+  }
+}
+
+function downloadRecording(slot, filename) {
+  const proto = serverHost.startsWith('localhost') || /^\d/.test(serverHost) ? 'http' : 'https';
+  const url = `${proto}://${serverHost}/api/recordings/${slot}/${filename}?password=${encodeURIComponent(serverPw)}`;
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+}
+</script>
+</body>
+</html>
