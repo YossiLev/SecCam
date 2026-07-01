@@ -394,6 +394,8 @@ let pingInterval = null;
 let audioCtx = null;
 let voiceMode = false; // true while receiving voice binary
 const CHUNK_MS = 1000; // send video data every 1 second
+let camWidth = 320;
+let camHeight = 240;
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -436,8 +438,8 @@ async function startStream() {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: camWidth },
+        height: { ideal: camHeight },
         frameRate: { ideal: 24 }
       },
       audio: false
@@ -605,7 +607,7 @@ async function flipCamera() {
 
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24 } },
+      video: { facingMode, width: { ideal: camWidth }, height: { ideal: camHeight }, frameRate: { ideal: 24 } },
       audio: false
     });
     $('video-preview').srcObject = mediaStream;
